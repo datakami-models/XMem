@@ -1,29 +1,23 @@
 # Prediction interface for Cog ⚙️
 # https://github.com/replicate/cog/blob/main/docs/python.md
 
-import torch
-
-import glob
-import subprocess
-
 import os
-from os import path
-from argparse import ArgumentParser
 import shutil
+import subprocess
+from os import path
 
+import cv2
+import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import numpy as np
 from PIL import Image
-import cv2
-
-from inference.data.test_datasets import LongTestDataset, DAVISTestDataset, YouTubeVOSTestDataset
-from inference.data.mask_mapper import MaskMapper
-from model.network import XMem
-from inference.inference_core import InferenceCore
-
 from progressbar import progressbar
+from torch.utils.data import DataLoader
+
+from inference.data.mask_mapper import MaskMapper
+from inference.data.test_datasets import LongTestDataset
+from inference.inference_core import InferenceCore
+from model.network import XMem
 
 try:
     import hickle as hkl
@@ -32,6 +26,7 @@ except ImportError:
 
 
 from cog import BasePredictor, Input, Path
+
 
 class Predictor(BasePredictor):
     def setup(self) -> None:
@@ -190,14 +185,17 @@ class Predictor(BasePredictor):
                     if vid_reader.get_palette() is not None:
                         out_img.putpalette(vid_reader.get_palette())
                     out_img.save(os.path.join(this_out_path, frame[:-4]+'.png'))
-        
-        subprocess.run(["ffmpeg","-framerate","24","-pattern_type","glob","-i","./results/default_video/*.png", "-c:v","copy","-y",self.outvideo_path])
+
+        ps = subprocess.run(
+            [
+                "ffmpeg",
+                "-framerate","24",
+                "-pattern_type","glob","-i","./results/default_video/*.png", 
+                "-c:v","libx264",
+                "-crf","0",
+                "-y",
+                self.outvideo_path
+             ],
+        )
         
         return Path(self.outvideo_path)
-
-
-#if __name__=='__main__':
-#    pred = Predictor()
-#    pred.setup()
-#    pred.predict(video="inputs_local/raccoon_short.mp4", mask="inputs_local/Annotations/racoon/0001.png")
-    
